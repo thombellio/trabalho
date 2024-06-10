@@ -1,0 +1,230 @@
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+
+#define MAX_DESCRIPTION_SIZE 100
+
+typedef struct Task {
+    int id;
+    char description[MAX_DESCRIPTION_SIZE];
+    struct Task* next;
+} TASK;
+
+typedef struct Queue {
+    TASK* front;
+    TASK* rear;
+} QUEUE;
+
+typedef struct Stack {
+    TASK* top;
+} STACK;
+
+typedef struct List {
+    TASK* head;
+} LIST;
+
+QUEUE pendingQueue = {NULL, NULL};
+LIST completedList = {NULL};
+STACK draftStack = {NULL};
+
+// Function prototypes
+TASK* createTask(int id, char* description);
+void enqueue(QUEUE* queue, TASK* newTask);
+TASK* dequeue(QUEUE* queue);
+void push(STACK* stack, TASK* newTask);
+TASK* pop(STACK* stack);
+void addToList(LIST* list, TASK* newTask);
+TASK* removeFromList(LIST* list, int id);
+void displayMenu();
+
+int main() {
+    int choice;
+    printf("################# TASK MANAGER SYSTEM #################\n");
+
+    do {
+        displayMenu();
+        printf("Choose an option: ");
+        scanf("%d", &choice);
+
+        switch (choice) {
+            case 1: {
+                // CREATE A TASK, THEN ADD TO PENDING QUEUE
+                int id;
+                char description[MAX_DESCRIPTION_SIZE];
+
+                printf("Enter Task ID (number): ");
+                scanf("%d", &id);
+
+                getchar();
+                printf("Enter Task Description (string): ");
+                fgets(description, MAX_DESCRIPTION_SIZE, stdin);
+                description[strcspn(description, "\n")] = '\0';
+
+                TASK* newTask = createTask(id, description);
+                enqueue(&pendingQueue, newTask);
+                break;
+            }
+            case 2:
+                // SEE ALL TASKS FROM PENDING QUEUE
+                printf("Printing All Pending Tasks:\n");
+                TASK* current = pendingQueue.front;
+                while (current != NULL) {
+                    printf("ID: %d, Description: %s\n", current->id, current->description);
+                    current = current->next;
+                }
+                break;
+
+            case 3: {
+                // COMPLETE FIRST PENDING TASK
+                TASK* firstTask = dequeue(&pendingQueue);
+                if (firstTask != NULL) {
+                    printf("Task Completed: ID %d, Description: %s\n", firstTask->id, firstTask->description);
+                    addToList(&completedList, firstTask);
+                } else {
+                    printf("No pending tasks\n");
+                }
+                break;
+            }
+            case 4:
+                // SEE ALL TASKS FROM COMPLETED LIST
+                printf("Printing All Completed Tasks:\n");
+                TASK* curr = completedList.head;
+                while (curr != NULL) {
+                    printf("ID: %d, Description: %s\n", curr->id, curr->description);
+                    curr = curr->next;
+                }
+                break;
+            case 5: {
+                // SET COMPLETED TASK TO DRAFT
+                int id;
+                printf("Enter Task ID (number): ");
+                scanf("%d", &id);
+
+                TASK* task = removeFromList(&completedList, id);
+                if (task != NULL) {
+                    push(&draftStack, task);
+                }
+                break;
+            }
+            case 6:
+                // SEE ALL TASKS FROM DRAFT STACK
+                printf("Printing All Draft Tasks:\n");
+                TASK* temp = draftStack.top;
+                while (temp != NULL) {
+                    printf("ID: %d, Description: %s\n", temp->id, temp->description);
+                    temp = temp->next;
+                }
+                break;
+
+            case 7: {
+                // SET LAST DRAFT AS PENDING TASK
+                TASK* lastTask = pop(&draftStack);
+                if (lastTask != NULL) {
+                    enqueue(&pendingQueue, lastTask);
+                }
+                break;
+            }
+            case 0:
+                printf("Exiting program\n");
+                break;
+
+            default:
+                printf("Invalid choice\n");
+                break;
+        }
+    } while (choice != 0);
+
+    printf("################# SYSTEM SHUT DOWN #################\n");
+    return 0;
+}
+
+// Function definitions
+
+TASK* createTask(int id, char* description) {
+    TASK* newTask = (TASK*)malloc(sizeof(TASK));
+    newTask->id = id;
+    strcpy(newTask->description, description);
+    newTask->next = NULL;
+    return newTask;
+}
+
+void enqueue(QUEUE* queue, TASK* newTask) {
+    if (queue->rear == NULL) {
+        queue->front = queue->rear = newTask;
+    } else {
+        queue->rear->next = newTask;
+        queue->rear = newTask;
+    }
+}
+
+TASK* dequeue(QUEUE* queue) {
+    if (queue->front == NULL) {
+        return NULL;
+    }
+
+    TASK* temp = queue->front;
+    queue->front = queue->front->next;
+
+    if (queue->front == NULL) {
+        queue->rear = NULL;
+    }
+
+    temp->next = NULL;
+    return temp;
+}
+
+void push(STACK* stack, TASK* newTask) {
+    newTask->next = stack->top;
+    stack->top = newTask;
+}
+
+TASK* pop(STACK* stack) {
+    if (stack->top == NULL) {
+        return NULL;
+    }
+
+    TASK* temp = stack->top;
+    stack->top = stack->top->next;
+    temp->next = NULL;
+    return temp;
+}
+
+void addToList(LIST* list, TASK* newTask) {
+    newTask->next = list->head;
+    list->head = newTask;
+}
+
+TASK* removeFromList(LIST* list, int id) {
+    TASK* current = list->head;
+    TASK* prev = NULL;
+
+    while (current != NULL && current->id != id) {
+        prev = current;
+        current = current->next;
+    }
+
+    if (current == NULL) {
+        return NULL;
+    }
+
+    if (prev == NULL) {
+        list->head = current->next;
+    } else {
+        prev->next = current->next;
+    }
+
+    current->next = NULL;
+    return current;
+}
+
+void displayMenu() {
+    printf("\nMenu:\n");
+    printf("1 - Create New Pending Task\n");
+    printf("2 - See All Pending Tasks\n");
+    printf("3 - Complete First Pending Task\n");
+    printf("4 - See All Completed Tasks\n");
+    printf("5 - Set Completed Task as Draft by its ID\n");
+    printf("6 - See All Draft Tasks\n");
+    printf("7 - Set Last Draft Task as Pending Task\n");
+    printf("0 - Exit\n");
+}
